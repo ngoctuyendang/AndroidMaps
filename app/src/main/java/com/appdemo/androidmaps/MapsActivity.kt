@@ -10,30 +10,40 @@ import android.provider.Settings
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.lifecycle.ViewModelProvider
 import com.appdemo.androidmaps.databinding.ActivityMapsBinding
+import com.appdemo.androidmaps.models.PlaceNote
+import com.appdemo.androidmaps.ui.CustomInfoWindowForGoogleMap
+import com.appdemo.androidmaps.ui.EditMarker
+import com.appdemo.androidmaps.viewmodels.MapsViewModel
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
+import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
-
+import kotlin.math.floor
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private lateinit var mMap: GoogleMap
     private lateinit var binding: ActivityMapsBinding
+    private val viewModel: MapsViewModel by lazy {
+        ViewModelProvider(this)[MapsViewModel::class.java]
+    }
 
     private lateinit var currentLocation: Location
+    private var currentPositionMarker: Marker? = null
     private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
     private val permissionCode = 101
     private val GPS_CHECK = 112
     private lateinit var manager: LocationManager
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,6 +57,39 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             buildAlertMessageNoGps()
         } else {
             getCurrentLocation()
+        }
+    }
+
+    private fun getAllPlaceNotes() {
+        viewModel.getNotes()
+        viewModel.listMarker.observe(this) {
+            val markerOps = MarkerOptions()
+            val currentPosListNote = ArrayList<PlaceNote>()
+            it.forEach { note ->
+                val location = LatLng(note.lat, note.long)
+                if (floor(note.lat * 10000) / 10000
+                    == floor(currentLocation.latitude * 10000) / 10000
+                ) {
+                    // In case, notes of current location
+                    currentPosListNote.add(note)
+                } else {
+                    // In another case
+                    markerOps
+                        .position(location)
+                        .title("Notes")
+                        .snippet(note.note)
+                    mMap.addMarker(markerOps)
+                }
+            }
+
+            var noteMsg = ""
+            currentPosListNote.forEachIndexed { index, note ->
+                noteMsg = noteMsg.plus(note.userName).plus(": ").plus(note.note)
+                if (index != currentPosListNote.size - 1) noteMsg = noteMsg.plus("\n")
+            }
+
+            mMap.setInfoWindowAdapter(CustomInfoWindowForGoogleMap(this))
+            currentPositionMarker?.snippet = noteMsg
         }
     }
 
@@ -72,6 +115,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     @SuppressLint("VisibleForTests")
     private fun getCurrentLocation() {
+        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
+
         // Check location permission
         if (ActivityCompat.checkSelfPermission(
                 this,
@@ -86,7 +131,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                 arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION),
                 permissionCode
             )
-
             return
         }
 
@@ -151,10 +195,35 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             .position(latLng)
             .title("Current location")
 
-        val marker = mMap.addMarker(markerOptions)
-        marker?.showInfoWindow()
+        currentPositionMarker = mMap.addMarker(markerOptions)
+        currentPositionMarker?.showInfoWindow()
 
         mMap.animateCamera(CameraUpdateFactory.newLatLng(latLng))
         mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 10f))
+
+        setupEvent()
+        getAllPlaceNotes()
+    }
+
+    private fun setupEvent() {
+        // Add note to Firebase - only for current location
+        mMap.setOnInfoWindowClickListener { marker ->
+            if (marker.position.latitude != currentLocation.latitude
+                || marker.position.longitude != currentLocation.longitude
+            ) {
+                return@setOnInfoWindowClickListener
+            }
+
+            val editMarker = EditMarker { name, note ->
+                val placeNote = PlaceNote(
+                    marker.position.latitude,
+                    marker.position.longitude,
+                    name,
+                    note
+                )
+                viewModel.addDataToFirebase(placeNote)
+            }
+            editMarker.show(supportFragmentManager, "dialog")
+        }
     }
 }

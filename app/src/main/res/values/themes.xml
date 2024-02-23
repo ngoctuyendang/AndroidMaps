@@ -13,4 +13,9 @@
         <item name="android:windowTranslucentStatus">true</item>
     </style>
 
+    <style name="AlertDialog" parent="Theme.AppCompat.Dialog.Alert">
+        <item name="android:background">@drawable/dialog_background</item>
+        <item name="android:textColor">@color/black</item>
+    </style>
+
 </resources>
