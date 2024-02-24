@@ -6,4 +6,7 @@
     <string name="the_user_name_is_required">* The user name is required</string>
     <string name="the_note_is_required">* The note is required</string>
     <string name="current_location">Current location</string>
+    <string name="search_note">Search note</string>
+    <string name="search">Search</string>
+    <string name="your_keyword">Your keyword</string>
 </resources>

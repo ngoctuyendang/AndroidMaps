@@ -16,6 +16,14 @@ class MapsViewModel : ViewModel() {
     val listMarker: LiveData<ArrayList<PlaceNote>>
         get() = _listMarker
 
+    private val _searchListResult = MutableLiveData<ArrayList<PlaceNote>>()
+    val searchListResult: LiveData<ArrayList<PlaceNote>>
+        get() = _searchListResult
+
+    private val _searchError = MutableLiveData<String>()
+    val searchError: LiveData<String>
+        get() = _searchError
+
     private val firebaseDatabase: FirebaseDatabase by lazy { FirebaseDatabase.getInstance() }
     var databaseReference: DatabaseReference? = null
 
@@ -55,5 +63,40 @@ class MapsViewModel : ViewModel() {
                 //TODO - should be show error msg, do not impl now
             }
         })
+    }
+
+    fun searchNote(keyword: String) {
+        val refListNote = firebaseDatabase.getReference("/place_notes/")
+        refListNote.addListenerForSingleValueEvent(
+            object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val resultList = ArrayList<PlaceNote>()
+
+                    snapshot.children.forEach { snapshot ->
+                        val note = snapshot.getValue(PlaceNote::class.java)
+                        note?.let {
+                            if (it.userName.contains(keyword) || it.note.contains(keyword)) {
+                                resultList.add(note)
+                            }
+                        }
+                    }
+
+                    if (resultList.isEmpty()) {
+                        _searchError
+                            .postValue("Do not have any note matching with the keyword")
+                    } else {
+                        _searchListResult.postValue(resultList)
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {}
+            }
+        )
+
+    }
+
+    fun clearData() {
+        _searchListResult.postValue(arrayListOf())
+        _searchError.postValue("")
     }
 }

@@ -7,14 +7,21 @@ import android.location.Location
 import android.location.LocationManager
 import android.os.Bundle
 import android.provider.Settings
+import android.text.Editable
+import android.text.TextWatcher
+import android.view.View
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.ViewModelProvider
 import com.appdemo.androidmaps.databinding.ActivityMapsBinding
+import com.appdemo.androidmaps.databinding.SearchBottomSheetDialogBinding
 import com.appdemo.androidmaps.models.PlaceNote
 import com.appdemo.androidmaps.ui.CustomInfoWindowForGoogleMap
 import com.appdemo.androidmaps.ui.EditMarker
+import com.appdemo.androidmaps.ui.SearchResultAdapter
 import com.appdemo.androidmaps.viewmodels.MapsViewModel
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
@@ -28,6 +35,7 @@ import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import kotlin.math.floor
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
@@ -36,6 +44,14 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     private lateinit var binding: ActivityMapsBinding
     private val viewModel: MapsViewModel by lazy {
         ViewModelProvider(this)[MapsViewModel::class.java]
+    }
+
+    private val searchResultAdapter by lazy {
+        SearchResultAdapter { lat, long ->
+            // Move to the position that user clicked on the result list
+            val latLng = LatLng(lat, long)
+            mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng))
+        }
     }
 
     private lateinit var currentLocation: Location
@@ -224,6 +240,84 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                 viewModel.addDataToFirebase(placeNote)
             }
             editMarker.show(supportFragmentManager, "dialog")
+        }
+
+        // Search note with keyword
+        binding.searchBtn.setOnClickListener {
+            searchNote()
+        }
+    }
+
+    private fun searchNote() {
+        /* Show bottom sheet -> show list result -> click
+        on item of result -> move map to this position */
+
+        val dialog = BottomSheetDialog(this, R.style.DialogStyle)
+        val view =
+            SearchBottomSheetDialogBinding.inflate(layoutInflater, null, false)
+        dialog.setCancelable(true)
+        dialog.setContentView(view.root)
+        dialog.show()
+
+        dialog.setOnDismissListener {
+            viewModel.clearData()
+        }
+
+        view.searchKeyword.addTextChangedListener(
+            object : TextWatcher {
+                override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
+                    // Gone error msg when user typing
+                    view.keywordErrorMsg.visibility = View.GONE
+                }
+
+                override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
+
+                override fun afterTextChanged(p0: Editable?) {}
+            }
+        )
+
+        view.searchKeyword.requestFocus()
+        view.searchBtn.setOnClickListener {
+            performSearch(view, it)
+        }
+
+        view.searchKeyword.setOnEditorActionListener { textView, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                textView?.let { performSearch(view, it) }
+            }
+            false
+        }
+
+        viewModel.searchListResult.observe(this) {
+            view.searchResultError.visibility = View.GONE
+            view.searchResult.visibility = View.VISIBLE
+            view.searchResult.adapter = searchResultAdapter
+            searchResultAdapter.submitList(it)
+        }
+
+        viewModel.searchError.observe(this) {
+            view.searchResult.visibility = View.INVISIBLE
+            view.searchResultError.visibility = View.VISIBLE
+            view.searchResultError.text = it
+        }
+    }
+
+    private fun performSearch(
+        view: SearchBottomSheetDialogBinding,
+        it: View,
+    ) {
+        val keyword = view.searchKeyword.text
+        if (keyword.isNotEmpty()) {
+            view.searchKeyword.clearFocus()
+            viewModel.searchNote(keyword.toString())
+            // Hide keyboard
+            val inputMethodManager =
+                getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+            inputMethodManager.hideSoftInputFromWindow(it.windowToken, 0)
+        } else {
+            // Show error msg when user search without keyword
+            view.keywordErrorMsg.visibility = View.VISIBLE
+            viewModel.clearData()
         }
     }
 }
