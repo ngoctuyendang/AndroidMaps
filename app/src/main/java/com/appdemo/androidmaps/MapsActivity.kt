@@ -36,7 +36,6 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.material.bottomsheet.BottomSheetDialog
-import kotlin.math.floor
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
@@ -80,32 +79,49 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         viewModel.getNotes()
         viewModel.listMarker.observe(this) {
             val markerOps = MarkerOptions()
+            var marker: Marker? = null
             val currentPosListNote = ArrayList<PlaceNote>()
+            // With note at the same position
+            val list: MutableMap<String, PlaceNote> = mutableMapOf()
+
             it.forEach { note ->
                 val location = LatLng(note.lat, note.long)
-                if (floor(note.lat * 1000) / 1000
-                    == floor(currentLocation.latitude * 1000) / 1000
+                val tempLat = note.lat.toString().take(7).toDouble()
+                val tempLng = note.long.toString().take(7).toDouble()
+
+                if (tempLat == currentLocation.latitude.toString().take(7).toDouble()
+                    && tempLng == currentLocation.longitude.toString().take(7).toDouble()
                 ) {
                     // In case, notes of current location
                     currentPosListNote.add(note)
                 } else {
                     // In another case
-                    markerOps
-                        .position(location)
-                        .title(resources.getString(R.string.notes))
-                        .snippet(note.note)
-                    mMap.addMarker(markerOps)
+                    if (!list.containsKey("${note.lat}_${note.long}")) {
+                        markerOps
+                            .position(location)
+                            .title(resources.getString(R.string.notes))
+                            .snippet(note.userName.plus(": ").plus(note.note))
+                        marker = mMap.addMarker(markerOps)
+                        list["${note.lat}_${note.long}"] = note
+                    } else {
+                        val snippet = marker?.snippet
+                        val newSnippet = "$snippet \n${note.userName}: ${note.note}"
+
+                        mMap.setInfoWindowAdapter(CustomInfoWindowForGoogleMap(this))
+                        marker?.snippet = newSnippet
+                    }
                 }
             }
 
-            var noteMsg = ""
+            var currentPosNoteMsg = ""
             currentPosListNote.forEachIndexed { index, note ->
-                noteMsg = noteMsg.plus(note.userName).plus(": ").plus(note.note)
-                if (index != currentPosListNote.size - 1) noteMsg = noteMsg.plus("\n")
+                currentPosNoteMsg = currentPosNoteMsg.plus(note.userName).plus(": ").plus(note.note)
+                if (index != currentPosListNote.size - 1) currentPosNoteMsg =
+                    currentPosNoteMsg.plus("\n")
             }
 
             mMap.setInfoWindowAdapter(CustomInfoWindowForGoogleMap(this))
-            currentPositionMarker?.snippet = noteMsg
+            currentPositionMarker?.snippet = currentPosNoteMsg
             currentPositionMarker?.showInfoWindow()
         }
     }
@@ -122,7 +138,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         builder.setMessage(resources.getString(R.string.gps_confirm_msg))
             .setCancelable(false)
             .setPositiveButton(resources.getString(R.string.yes)) { _, _ ->
-                startActivityForResult(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS), gpsCheckCode)
+                startActivityForResult(
+                    Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS),
+                    gpsCheckCode
+                )
             }.setNegativeButton(resources.getString(R.string.no)) { dialog, _ ->
                 dialog.cancel()
             }
@@ -215,7 +234,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         currentPositionMarker = mMap.addMarker(markerOptions)
 
         mMap.animateCamera(CameraUpdateFactory.newLatLng(latLng))
-        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 20f))
+        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 12f))
 
         setupEvent()
         getAllPlaceNotes()
