@@ -9,4 +9,8 @@
     <string name="search_note">Search note</string>
     <string name="search">Search</string>
     <string name="your_keyword">Your keyword</string>
+    <string name="gps_confirm_msg">Your GPS seems to be disabled, do you want to enable it?</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
+    <string name="notes">Notes</string>
 </resources>

@@ -8,7 +8,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <TextView
-        android:id="@+id/nameDesc"
+        android:id="@+id/name_desc"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/user_name"
@@ -17,13 +17,14 @@
         android:textSize="20sp"/>
 
     <EditText
-        android:id="@+id/userName"
+        android:id="@+id/user_name"
         android:layout_width="0dp"
+        android:inputType="text"
         android:layout_height="wrap_content"
-        app:layout_constraintStart_toEndOf="@id/nameDesc"
+        app:layout_constraintStart_toEndOf="@id/name_desc"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@id/nameDesc"
-        app:layout_constraintBottom_toBottomOf="@id/nameDesc"
+        app:layout_constraintTop_toTopOf="@id/name_desc"
+        app:layout_constraintBottom_toBottomOf="@id/name_desc"
         android:layout_marginStart="8dp"/>
 
     <TextView
@@ -34,7 +35,7 @@
         android:text="@string/the_user_name_is_required"
         android:textColor="@color/red"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/userName"
+        app:layout_constraintTop_toBottomOf="@id/user_name"
         android:layout_marginTop="4dp"
         tools:visibility="visible"
         android:visibility="gone"/>
@@ -53,6 +54,7 @@
         android:id="@+id/note"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:inputType="text"
         app:layout_constraintStart_toEndOf="@id/noteDesc"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@id/noteDesc"

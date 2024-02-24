@@ -58,7 +58,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     private var currentPositionMarker: Marker? = null
     private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
     private val permissionCode = 101
-    private val GPS_CHECK = 112
+    private val gpsCheckCode = 112
     private lateinit var manager: LocationManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -83,8 +83,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             val currentPosListNote = ArrayList<PlaceNote>()
             it.forEach { note ->
                 val location = LatLng(note.lat, note.long)
-                if (floor(note.lat * 10000) / 10000
-                    == floor(currentLocation.latitude * 10000) / 10000
+                if (floor(note.lat * 1000) / 1000
+                    == floor(currentLocation.latitude * 1000) / 1000
                 ) {
                     // In case, notes of current location
                     currentPosListNote.add(note)
@@ -92,7 +92,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                     // In another case
                     markerOps
                         .position(location)
-                        .title("Notes")
+                        .title(resources.getString(R.string.notes))
                         .snippet(note.note)
                     mMap.addMarker(markerOps)
                 }
@@ -106,23 +106,24 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
             mMap.setInfoWindowAdapter(CustomInfoWindowForGoogleMap(this))
             currentPositionMarker?.snippet = noteMsg
+            currentPositionMarker?.showInfoWindow()
         }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == GPS_CHECK && manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+        if (requestCode == gpsCheckCode && manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             getCurrentLocation()
         }
     }
 
     private fun buildAlertMessageNoGps() {
         val builder = AlertDialog.Builder(this)
-        builder.setMessage("Your GPS seems to be disabled, do you want to enable it?")
+        builder.setMessage(resources.getString(R.string.gps_confirm_msg))
             .setCancelable(false)
-            .setPositiveButton("Yes") { _, _ ->
-                startActivityForResult(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS), GPS_CHECK)
-            }.setNegativeButton("No") { dialog, _ ->
+            .setPositiveButton(resources.getString(R.string.yes)) { _, _ ->
+                startActivityForResult(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS), gpsCheckCode)
+            }.setNegativeButton(resources.getString(R.string.no)) { dialog, _ ->
                 dialog.cancel()
             }
         val alert: AlertDialog = builder.create()
@@ -209,13 +210,12 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         val latLng = LatLng(currentLocation.latitude, currentLocation.longitude)
         val markerOptions = MarkerOptions()
             .position(latLng)
-            .title("Current location")
+            .title(resources.getString(R.string.current_location))
 
         currentPositionMarker = mMap.addMarker(markerOptions)
-        currentPositionMarker?.showInfoWindow()
 
         mMap.animateCamera(CameraUpdateFactory.newLatLng(latLng))
-        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 10f))
+        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 20f))
 
         setupEvent()
         getAllPlaceNotes()
