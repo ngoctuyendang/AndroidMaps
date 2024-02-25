@@ -48,6 +48,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     private val searchResultAdapter by lazy {
         SearchResultAdapter { lat, long ->
             // Move to the position that user clicked on the result list
+            // TODO - missing auto show note - current only move to the position
             val latLng = LatLng(lat, long)
             mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng))
         }
@@ -85,17 +86,21 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             val list: MutableMap<String, PlaceNote> = mutableMapOf()
 
             it.forEach { note ->
+                // When create new LatLng -> may be have a rounding error
                 val location = LatLng(note.lat, note.long)
-                val tempLat = note.lat.toString().take(7).toDouble()
-                val tempLng = note.long.toString().take(7).toDouble()
+                val tempLat = note.lat.toString().take(6).toDouble()
+                val tempLng = note.long.toString().take(6).toDouble()
 
-                if (tempLat == currentLocation.latitude.toString().take(7).toDouble()
-                    && tempLng == currentLocation.longitude.toString().take(7).toDouble()
+                if (tempLat == currentLocation.latitude.toString().take(6).toDouble()
+                    && tempLng == currentLocation.longitude.toString().take(6).toDouble()
                 ) {
                     // In case, notes of current location
                     currentPosListNote.add(note)
                 } else {
-                    // In another case
+                    /* In another case, at the position
+                        if do not have any note -> add new maker with note
+                        else -> add insert note to current list note
+                     */
                     if (!list.containsKey("${note.lat}_${note.long}")) {
                         markerOps
                             .position(location)
@@ -115,11 +120,13 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
             var currentPosNoteMsg = ""
             currentPosListNote.forEachIndexed { index, note ->
-                currentPosNoteMsg = currentPosNoteMsg.plus(note.userName).plus(": ").plus(note.note)
+                currentPosNoteMsg =
+                    currentPosNoteMsg.plus(note.userName).plus(": ").plus(note.note)
                 if (index != currentPosListNote.size - 1) currentPosNoteMsg =
                     currentPosNoteMsg.plus("\n")
             }
 
+            // Custom snippet of marker
             mMap.setInfoWindowAdapter(CustomInfoWindowForGoogleMap(this))
             currentPositionMarker?.snippet = currentPosNoteMsg
             currentPositionMarker?.showInfoWindow()
@@ -249,6 +256,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                 return@setOnInfoWindowClickListener
             }
 
+            // Show BottomSheet to filled data
             val editMarker = EditMarker { name, note ->
                 val placeNote = PlaceNote(
                     marker.position.latitude,
